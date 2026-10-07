@@ -6,6 +6,7 @@ The plugin follows the official [VideoOptimizer plugin for Shopware](https://git
 
 ## Features
 
+- **Panel area "Videos"**: video list with library filter, search, upload and URL import; video details with preview, rename, delete and poster selection (one of 10 frames or a custom image); library management with create, edit (name, description, codecs, resolutions), reprocess and delete
 - **Panel field** `videooptimizer` to pick a video from all libraries, with library filter, search and status (ready, processing, failed)
 - **Upload** straight from the Panel: the browser sends the file in parts to VideoOptimizer storage via presigned URLs, the file never passes through the Kirby server
 - **Import** of a video from a public `https` URL
@@ -155,14 +156,13 @@ The player data of a video is cached for 60 minutes. Failed lookups and videos t
 
 ## Permissions
 
-The plugin's API routes require a Panel user who may update pages.
+The Videos area and the plugin's API routes require a Panel user who may update pages. Hide the area for a role with `access: videooptimizer: false` in its blueprint.
 
 ## Differences to the Shopware plugin
 
 Not included yet:
 
-- Library management (create, edit encoding ladder, reprocess) and deleting or renaming videos: use the VideoOptimizer app
-- Poster selection and custom poster upload
+- Picking a custom poster from the Kirby media library (upload from disk works)
 - The Shopware layout elements media split, background hero, spotlight and video grid
 - Webhooks; the Panel polls the status of processing videos instead
 

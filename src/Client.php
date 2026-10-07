@@ -49,6 +49,49 @@ class Client
         return $this->allPages('/libraries');
     }
 
+    public function library(string $id): array
+    {
+        return $this->data('GET', '/libraries/' . rawurlencode($id));
+    }
+
+    /**
+     * @param array{name?: string, description?: string, codec?: string, resolutions?: string} $data
+     */
+    public function createLibrary(array $data): array
+    {
+        return $this->data('POST', '/libraries', $data);
+    }
+
+    public function updateLibrary(string $id, array $data): array
+    {
+        return $this->data('PATCH', '/libraries/' . rawurlencode($id), $data);
+    }
+
+    /**
+     * Deletes the library with all its videos
+     */
+    public function deleteLibrary(string $id): void
+    {
+        $this->request('DELETE', '/libraries/' . rawurlencode($id));
+    }
+
+    /**
+     * Encodes all videos of the library again with its current encoding ladder
+     */
+    public function reprocessLibrary(string $id): array
+    {
+        return $this->data('POST', '/libraries/' . rawurlencode($id) . '/reprocess');
+    }
+
+    /**
+     * Codecs and resolutions the organization may enable on a library.
+     * Not wrapped in `data`.
+     */
+    public function encodings(): array
+    {
+        return $this->request('GET', '/encodings');
+    }
+
     // Videos
 
     /**
@@ -63,6 +106,77 @@ class Client
     public function video(string $uuid): array
     {
         return $this->data('GET', '/videos/' . rawurlencode($uuid));
+    }
+
+    public function renameVideo(string $uuid, string $title): array
+    {
+        $video = $this->data('PATCH', '/videos/' . rawurlencode($uuid), ['title' => $title]);
+        $this->forgetEmbed($uuid);
+
+        return $video;
+    }
+
+    public function deleteVideo(string $uuid): void
+    {
+        $this->request('DELETE', '/videos/' . rawurlencode($uuid));
+        $this->forgetEmbed($uuid);
+    }
+
+    /**
+     * The 10 auto-generated frames to choose the poster from
+     *
+     * @return list<array{index: int, url: string}>
+     */
+    public function thumbnails(string $uuid): array
+    {
+        return $this->data('GET', '/videos/' . rawurlencode($uuid) . '/thumbnails')['thumbnails'] ?? [];
+    }
+
+    /**
+     * Uses one of the auto-generated frames as poster
+     */
+    public function selectThumbnail(string $uuid, int $index): array
+    {
+        $result = $this->data('POST', '/videos/' . rawurlencode($uuid) . '/thumbnail', ['thumbnailIndex' => $index]);
+        $this->forgetEmbed($uuid);
+
+        return $result;
+    }
+
+    /**
+     * Starts a custom poster upload, returns a presigned PUT URL
+     */
+    public function initiatePosterUpload(string $uuid, string $contentType, int $fileSize): array
+    {
+        return $this->data('POST', '/videos/' . rawurlencode($uuid) . '/poster/initiate', [
+            'contentType' => $contentType,
+            'fileSize'    => $fileSize,
+        ]);
+    }
+
+    public function completePosterUpload(string $uuid, string $key): array
+    {
+        $result = $this->data('POST', '/videos/' . rawurlencode($uuid) . '/poster/complete', ['key' => $key]);
+        $this->forgetEmbed($uuid);
+
+        return $result;
+    }
+
+    /**
+     * Switches the active poster between the custom upload and the frame
+     */
+    public function selectPoster(string $uuid, string $source): array
+    {
+        $result = $this->data('POST', '/videos/' . rawurlencode($uuid) . '/poster/select', ['source' => $source]);
+        $this->forgetEmbed($uuid);
+
+        return $result;
+    }
+
+    public function deletePoster(string $uuid): void
+    {
+        $this->request('DELETE', '/videos/' . rawurlencode($uuid) . '/poster');
+        $this->forgetEmbed($uuid);
     }
 
     /**
