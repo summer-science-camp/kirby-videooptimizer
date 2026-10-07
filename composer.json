@@ -1,0 +1,27 @@
+{
+  "name": "summer-science-camp/kirby-videooptimizer",
+  "description": "VideoOptimizer for Kirby: pick and upload videos in the Panel and play them adaptively (HLS) from the VideoOptimizer EU CDN.",
+  "type": "kirby-plugin",
+  "license": "MIT",
+  "keywords": ["kirby", "kirby-plugin", "video", "hls", "videooptimizer"],
+  "require": {
+    "php": ">=8.2",
+    "getkirby/composer-installer": "^1.2"
+  },
+  "require-dev": {
+    "getkirby/cms": "^5.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "SummerScienceCamp\\VideoOptimizer\\": "src/"
+    }
+  },
+  "extra": {
+    "installer-name": "kirby-videooptimizer"
+  },
+  "config": {
+    "allow-plugins": {
+      "getkirby/composer-installer": true
+    }
+  }
+}

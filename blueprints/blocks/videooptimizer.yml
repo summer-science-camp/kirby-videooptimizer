@@ -1,0 +1,51 @@
+name: videooptimizer.block.name
+icon: video
+preview: videooptimizer
+fields:
+  video:
+    label: videooptimizer.field.video
+    type: videooptimizer
+    required: true
+  label:
+    label: videooptimizer.field.label
+    type: text
+    help: videooptimizer.field.label.help
+  presentation:
+    label: videooptimizer.field.presentation
+    type: radio
+    default: facade
+    columns: 2
+    options:
+      facade: "{{ t('videooptimizer.presentation.facade') }}"
+      direct: "{{ t('videooptimizer.presentation.direct') }}"
+  player:
+    label: videooptimizer.field.player
+    type: radio
+    default: native
+    columns: 2
+    options:
+      native: "{{ t('videooptimizer.player.native') }}"
+      embed: "{{ t('videooptimizer.player.embed') }}"
+  autoplay:
+    label: videooptimizer.field.autoplay
+    type: toggle
+    width: 1/4
+    when:
+      presentation: direct
+  muted:
+    label: videooptimizer.field.muted
+    type: toggle
+    width: 1/4
+  loop:
+    label: videooptimizer.field.loop
+    type: toggle
+    width: 1/4
+  controls:
+    label: videooptimizer.field.controls
+    type: toggle
+    default: true
+    width: 1/4
+  caption:
+    label: videooptimizer.field.caption
+    type: writer
+    inline: true
