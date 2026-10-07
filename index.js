@@ -66,9 +66,31 @@ const put = (url, blob, onProgress = () => {}) =>
   });
 
 /**
+ * Asks before reloading or closing the tab while an upload is running,
+ * because the browser would abort it. Navigating inside the Panel is fine,
+ * the upload keeps running.
+ */
+let activeUploads = 0;
+
+const warnOnLeave = (event) => {
+  event.preventDefault();
+  event.returnValue = "";
+};
+
+const trackUpload = async (task) => {
+  if (activeUploads++ === 0) window.addEventListener("beforeunload", warnOnLeave);
+
+  try {
+    return await task();
+  } finally {
+    if (--activeUploads === 0) window.removeEventListener("beforeunload", warnOnLeave);
+  }
+};
+
+/**
  * Uploads a video in parts, returns the UUID of the new video
  */
-const uploadVideo = async (vm, libraryId, file, onProgress) => {
+const uploadVideo = (vm, libraryId, file, onProgress) => trackUpload(async () => {
   const init = await api.initiateUpload(vm, {
     libraryId,
     filename: file.name,
@@ -102,7 +124,7 @@ const uploadVideo = async (vm, libraryId, file, onProgress) => {
   });
 
   return init.uuid;
-};
+});
 
 const videoCard = {
   props: { video: Object },
@@ -406,11 +428,13 @@ panel.plugin("circus-circuli/videooptimizer", {
 
           this.posterUploading = true;
 
-          await this.run(async () => {
-            const init = await api.initiatePoster(this, this.uuid, { contentType: file.type, fileSize: file.size });
-            await put(init.uploadUrl, file);
-            await api.completePoster(this, this.uuid, init.key);
-          });
+          await this.run(() =>
+            trackUpload(async () => {
+              const init = await api.initiatePoster(this, this.uuid, { contentType: file.type, fileSize: file.size });
+              await put(init.uploadUrl, file);
+              await api.completePoster(this, this.uuid, init.key);
+            })
+          );
 
           this.posterUploading = false;
         }
