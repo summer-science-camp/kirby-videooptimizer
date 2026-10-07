@@ -13,6 +13,7 @@
  * @var string|null $class
  */
 
+use CircusCirculi\VideoOptimizer\Exception\ConfigurationException;
 use CircusCirculi\VideoOptimizer\Plugin;
 
 if (($video ?? null) === null) {
@@ -29,9 +30,19 @@ $options      = [
     'loop'     => (bool)($loop ?? false),
     'controls' => (bool)($controls ?? true),
 ];
+
+// The hosted player URL is only needed for the embed player. A misconfigured
+// embed URL hides the video instead of breaking the page.
+try {
+    $embedUrl = $player === 'embed' ? Plugin::client()->embedPlayerUrl($video->uuid, $options) : null;
+} catch (ConfigurationException $e) {
+    kirby()->trigger('videooptimizer.error', ['uuid' => $video->uuid, 'exception' => $e]);
+    return;
+}
+
 $config       = [
     'player'   => $player,
-    'embedUrl' => Plugin::client()->embedPlayerUrl($video->uuid, $options),
+    'embedUrl' => $embedUrl,
     'hls'      => $video->hls,
     'mp4'      => $video->mp4,
     'poster'   => $video->poster,

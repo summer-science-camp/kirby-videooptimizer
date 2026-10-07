@@ -658,21 +658,30 @@ panel.plugin("circus-circuli/videooptimizer", {
         }
       },
       destroyed() {
+        this.isDestroyed = true;
         clearTimeout(this.timer);
       },
       methods: {
         async loadSelected() {
           clearTimeout(this.timer);
 
-          if (!this.value || !this.configured) {
+          const uuid = this.value;
+
+          if (!uuid || !this.configured) {
             this.video = null;
             return;
           }
 
+          // Responses for a previous selection or a closed field are dropped
+          const isStale = () => this.isDestroyed || uuid !== this.value;
+
           try {
-            this.video = await api.video(this, this.value);
+            const video = await api.video(this, uuid);
+            if (isStale()) return;
+            this.video = video;
             this.error = null;
           } catch (error) {
+            if (isStale()) return;
             this.error = error.message;
             return;
           }
@@ -775,11 +784,16 @@ panel.plugin("circus-circuli/videooptimizer", {
           async handler(uuid) {
             this.video = null;
             if (!uuid) return;
+
+            let video;
             try {
-              this.video = await api.video(this, uuid);
+              video = await api.video(this, uuid);
             } catch {
-              this.video = { uuid, title: uuid, status: "failed" };
+              video = { uuid, title: uuid, status: "failed" };
             }
+
+            // Ignore the response when another video was picked meanwhile
+            if (uuid === this.content.video) this.video = video;
           }
         }
       },
