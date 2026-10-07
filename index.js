@@ -70,7 +70,7 @@ const videoCard = {
   `
 };
 
-panel.plugin("summer-science-camp/videooptimizer", {
+panel.plugin("circus-circuli/videooptimizer", {
   fields: {
     videooptimizer: {
       components: { "k-videooptimizer-card": videoCard },

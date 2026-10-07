@@ -1,9 +1,9 @@
 <?php
 
-namespace SummerScienceCamp\VideoOptimizer;
+namespace CircusCirculi\VideoOptimizer;
 
-use SummerScienceCamp\VideoOptimizer\Exception\ApiException;
-use SummerScienceCamp\VideoOptimizer\Exception\ConfigurationException;
+use CircusCirculi\VideoOptimizer\Exception\ApiException;
+use CircusCirculi\VideoOptimizer\Exception\ConfigurationException;
 use Kirby\Cache\Cache;
 use Kirby\Http\Remote;
 use Throwable;

@@ -4,18 +4,18 @@ use Kirby\Cms\App;
 use Kirby\Content\Field;
 use Kirby\Exception\PermissionException;
 use Kirby\Http\Response;
-use SummerScienceCamp\VideoOptimizer\Client;
-use SummerScienceCamp\VideoOptimizer\Exception\ApiException;
-use SummerScienceCamp\VideoOptimizer\Exception\ConfigurationException;
-use SummerScienceCamp\VideoOptimizer\Plugin;
-use SummerScienceCamp\VideoOptimizer\Video;
+use CircusCirculi\VideoOptimizer\Client;
+use CircusCirculi\VideoOptimizer\Exception\ApiException;
+use CircusCirculi\VideoOptimizer\Exception\ConfigurationException;
+use CircusCirculi\VideoOptimizer\Plugin;
+use CircusCirculi\VideoOptimizer\Video;
 
 load([
-    'SummerScienceCamp\\VideoOptimizer\\Client'                          => 'src/Client.php',
-    'SummerScienceCamp\\VideoOptimizer\\Plugin'                          => 'src/Plugin.php',
-    'SummerScienceCamp\\VideoOptimizer\\Video'                           => 'src/Video.php',
-    'SummerScienceCamp\\VideoOptimizer\\Exception\\ApiException'         => 'src/Exception/ApiException.php',
-    'SummerScienceCamp\\VideoOptimizer\\Exception\\ConfigurationException' => 'src/Exception/ConfigurationException.php',
+    'CircusCirculi\\VideoOptimizer\\Client'                            => 'src/Client.php',
+    'CircusCirculi\\VideoOptimizer\\Plugin'                            => 'src/Plugin.php',
+    'CircusCirculi\\VideoOptimizer\\Video'                             => 'src/Video.php',
+    'CircusCirculi\\VideoOptimizer\\Exception\\ApiException'           => 'src/Exception/ApiException.php',
+    'CircusCirculi\\VideoOptimizer\\Exception\\ConfigurationException' => 'src/Exception/ConfigurationException.php',
 ], __DIR__);
 
 /**
@@ -41,7 +41,7 @@ $authorize = function (App $kirby): void {
     }
 };
 
-App::plugin('summer-science-camp/videooptimizer', [
+App::plugin('circus-circuli/videooptimizer', [
     'options' => [
         // API token (vp_...). Leave empty to read the VIDEOOPTIMIZER_API_TOKEN environment variable.
         'token'     => null,
@@ -66,7 +66,7 @@ App::plugin('summer-science-camp/videooptimizer', [
             'props' => [
                 'value'   => fn (?string $value = null) => $value,
                 // Library preselected for uploads in this field
-                'library' => fn (?string $library = null) => $library ?? option('summer-science-camp.videooptimizer.library'),
+                'library' => fn (?string $library = null) => $library ?? option('circus-circuli.videooptimizer.library'),
             ],
             'computed' => [
                 'configured' => fn () => Plugin::token() !== null,

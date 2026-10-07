@@ -1,6 +1,6 @@
 <?php
 
-namespace SummerScienceCamp\VideoOptimizer;
+namespace CircusCirculi\VideoOptimizer;
 
 use Kirby\Cms\App;
 use Throwable;

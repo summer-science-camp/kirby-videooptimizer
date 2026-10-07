@@ -16,7 +16,7 @@ return [
     'videooptimizer.field.muted'         => 'Stumm',
     'videooptimizer.field.loop'          => 'Endlosschleife',
     'videooptimizer.field.controls'      => 'Steuerung anzeigen',
-    'videooptimizer.notConfigured'       => 'Es ist kein VideoOptimizer-API-Token konfiguriert. Bitte die Option summer-science-camp.videooptimizer.token oder die Umgebungsvariable VIDEOOPTIMIZER_API_TOKEN setzen.',
+    'videooptimizer.notConfigured'       => 'Es ist kein VideoOptimizer-API-Token konfiguriert. Bitte die Option circus-circuli.videooptimizer.token oder die Umgebungsvariable VIDEOOPTIMIZER_API_TOKEN setzen.',
     'videooptimizer.select'              => 'Video auswählen',
     'videooptimizer.change'              => 'Ändern',
     'videooptimizer.remove'              => 'Entfernen',

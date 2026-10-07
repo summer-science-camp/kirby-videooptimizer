@@ -1,6 +1,6 @@
 <?php
 
-namespace SummerScienceCamp\VideoOptimizer\Exception;
+namespace CircusCirculi\VideoOptimizer\Exception;
 
 use RuntimeException;
 

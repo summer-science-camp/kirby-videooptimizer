@@ -33,7 +33,7 @@ Composer (the repository is private, so add it as VCS repository first):
 ```
 
 ```bash
-composer require summer-science-camp/kirby-videooptimizer
+composer require circus-circuli/kirby-videooptimizer
 ```
 
 Alternatively copy or clone the plugin to `site/plugins/kirby-videooptimizer`.
@@ -51,7 +51,7 @@ fieldsets:
 
 The API token grants write access to all videos and libraries of the organization, so it must stay out of Git, out of content files and out of the browser. The plugin reads it in this order:
 
-1. The option `summer-science-camp.videooptimizer.token`
+1. The option `circus-circuli.videooptimizer.token`
 2. The environment variable `VIDEOOPTIMIZER_API_TOKEN`
 
 ### Recommended: environment variable
@@ -75,7 +75,7 @@ For hosting without access to environment variables, set the option in a config 
 <?php
 
 return [
-    'summer-science-camp.videooptimizer.token' => 'vp_…',
+    'circus-circuli.videooptimizer.token' => 'vp_…',
 ];
 ```
 
@@ -95,7 +95,7 @@ Unlike the Shopware plugin, which stores the token in the database, there is del
 
 ```php
 return [
-    'summer-science-camp.videooptimizer' => [
+    'circus-circuli.videooptimizer' => [
         'token'    => null,                                   // see Credentials
         'apiUrl'   => 'https://api.videooptimizer.eu/api/v1',
         'embedUrl' => 'https://videooptimizer.eu',            // host of the hosted player
@@ -151,7 +151,7 @@ The `Video` object exposes `uuid`, `hls`, `mp4`, `poster`, `posterSrcset()`, `ti
 
 ## Caching
 
-The player data of a video is cached for 60 minutes. Failed lookups and videos that are still processing are cached for one minute, so an unreachable API cannot slow down every page view. Opening a video in the Panel refreshes its cached data once it is no longer processing. Clear the cache `summer-science-camp.videooptimizer` to refresh everything at once.
+The player data of a video is cached for 60 minutes. Failed lookups and videos that are still processing are cached for one minute, so an unreachable API cannot slow down every page view. Opening a video in the Panel refreshes its cached data once it is no longer processing. Clear the cache `circus-circuli.videooptimizer` to refresh everything at once.
 
 ## Permissions
 

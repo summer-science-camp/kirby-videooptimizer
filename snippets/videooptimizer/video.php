@@ -2,7 +2,7 @@
 /**
  * Renders a VideoOptimizer video
  *
- * @var \SummerScienceCamp\VideoOptimizer\Video|null $video
+ * @var \CircusCirculi\VideoOptimizer\Video|null $video
  * @var string|null $presentation `facade` (poster, player on click) or `direct`
  * @var string|null $player `native` (HLS player) or `embed` (hosted iframe player)
  * @var string|null $label Accessible name, defaults to the video title
@@ -13,13 +13,13 @@
  * @var string|null $class
  */
 
-use SummerScienceCamp\VideoOptimizer\Plugin;
+use CircusCirculi\VideoOptimizer\Plugin;
 
 if (($video ?? null) === null) {
     return;
 }
 
-$plugin       = kirby()->plugin('summer-science-camp/videooptimizer');
+$plugin       = kirby()->plugin('circus-circuli/videooptimizer');
 $presentation = ($presentation ?? 'facade') === 'direct' ? 'direct' : 'facade';
 $player       = ($player ?? 'native') === 'embed' ? 'embed' : 'native';
 $label        = trim((string)($label ?? '')) ?: ($video->title ?: t('videooptimizer.play'));
