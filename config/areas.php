@@ -39,12 +39,21 @@ return [
                             'component' => 'k-videooptimizer-videos-view',
                             'title'     => t('videooptimizer.area'),
                             'props'     => [
-                                'library'    => $library,
                                 'configured' => Plugin::token() !== null,
-                            ] + $load(fn ($client) => [
-                                'libraries' => $client->libraries(),
-                                'videos'    => $client->videos($library !== '' ? $library : null),
-                            ]),
+                            ] + $load(function ($client) use ($library) {
+                                $libraries = $client->libraries();
+
+                                // An unknown library, e.g. from an old link, shows all videos
+                                if (in_array($library, array_column($libraries, 'id'), true) === false) {
+                                    $library = '';
+                                }
+
+                                return [
+                                    'libraries' => $libraries,
+                                    'videos'    => $client->videos($library !== '' ? $library : null),
+                                    'library'   => $library,
+                                ];
+                            }),
                         ];
                     },
                 ],
