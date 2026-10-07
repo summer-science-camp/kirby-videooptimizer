@@ -274,18 +274,34 @@ const toolbar = {
  */
 const polling = {
   data() {
-    return { pollTimer: null };
+    return { pollTimer: null, pollDestroyed: false };
   },
   watch: {
     isProcessing: {
       immediate: true,
-      handler(processing) {
-        clearTimeout(this.pollTimer);
-        if (processing) this.pollTimer = setTimeout(() => this.$panel.view.reload(), POLL_INTERVAL);
+      handler() {
+        this.schedulePoll();
       }
     }
   },
+  methods: {
+    // The view keeps its component on reload, so the watcher does not fire
+    // again while the status stays the same: schedule after every reload
+    schedulePoll() {
+      clearTimeout(this.pollTimer);
+      if (this.pollDestroyed || !this.isProcessing) return;
+
+      this.pollTimer = setTimeout(async () => {
+        try {
+          await this.$panel.view.reload();
+        } finally {
+          this.schedulePoll();
+        }
+      }, POLL_INTERVAL);
+    }
+  },
   destroyed() {
+    this.pollDestroyed = true;
     clearTimeout(this.pollTimer);
   }
 };
