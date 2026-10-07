@@ -49,6 +49,36 @@ const format = {
 };
 
 /**
+ * The last selected library is remembered per browser. With only one
+ * library there is nothing to choose, so it is always selected.
+ */
+const LIBRARY_KEY = "videooptimizer.library";
+
+const rememberLibrary = (id) => {
+  try {
+    localStorage.setItem(LIBRARY_KEY, id ?? "");
+  } catch {
+    // Storage blocked, e.g. in private mode
+  }
+};
+
+const preferredLibrary = (libraries, current = "") => {
+  const exists = (id) => libraries.some((library) => library.id === id);
+
+  if (current && exists(current)) return current;
+  if (libraries.length === 1) return libraries[0].id;
+
+  let remembered = "";
+  try {
+    remembered = localStorage.getItem(LIBRARY_KEY) ?? "";
+  } catch {
+    // Storage blocked, e.g. in private mode
+  }
+
+  return exists(remembered) ? remembered : "";
+};
+
+/**
  * PUT to a presigned storage URL with progress, resolves with the ETag
  */
 const put = (url, blob, onProgress = () => {}) =>
@@ -289,8 +319,21 @@ panel.plugin("circus-circuli/videooptimizer", {
           return this.videos.some((video) => video.status === "processing");
         }
       },
+      watch: {
+        // Opening the area without a filter selects the preferred library
+        library: {
+          immediate: true,
+          handler(library) {
+            if (library || !this.configured || this.error) return;
+
+            const preferred = preferredLibrary(this.libraries);
+            if (preferred) this.filter(preferred);
+          }
+        }
+      },
       methods: {
         filter(library) {
+          rememberLibrary(library);
           this.$go("videos", { query: library ? { library } : {} });
         },
         added(uuid) {
@@ -727,6 +770,8 @@ panel.plugin("circus-circuli/videooptimizer", {
             }
           }
 
+          this.selectedLibrary = preferredLibrary(this.libraries, this.selectedLibrary);
+
           await this.loadVideos();
         },
         async loadVideos() {
@@ -743,6 +788,7 @@ panel.plugin("circus-circuli/videooptimizer", {
         },
         filter(library) {
           this.selectedLibrary = library;
+          rememberLibrary(library);
           this.loadVideos();
         },
         choose(video) {
