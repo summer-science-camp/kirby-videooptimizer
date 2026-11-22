@@ -26,6 +26,10 @@ const api = {
   completePoster: (vm, uuid, key) => data(vm.$api.post(path("videos", uuid, "poster", "complete"), { key })),
   selectPoster: (vm, uuid, source) => data(vm.$api.post(path("videos", uuid, "poster", "select"), { source })),
   deletePoster: (vm, uuid) => vm.$api.delete(path("videos", uuid, "poster")),
+  addSubtitleLanguage: (vm, values) => data(vm.$api.post(path("subtitle-languages"), values)),
+  uploadSubtitle: (vm, uuid, values) => data(vm.$api.post(path("videos", uuid, "subtitles"), values)),
+  updateSubtitle: (vm, uuid, language, values) => data(vm.$api.patch(path("videos", uuid, "subtitles", language), values)),
+  deleteSubtitle: (vm, uuid, language) => vm.$api.delete(path("videos", uuid, "subtitles", language)),
   initiateUpload: (vm, values) => data(vm.$api.post(path("upload", "initiate"), values)),
   completeUpload: (vm, values) => data(vm.$api.post(path("upload", "complete"), values)),
   importVideo: (vm, values) => data(vm.$api.post(path("import"), values))
@@ -115,6 +119,28 @@ const trackUpload = async (task) => {
   } finally {
     if (--activeUploads === 0) window.removeEventListener("beforeunload", warnOnLeave);
   }
+};
+
+/**
+ * File content as base64, so subtitle files in UTF-16 or Windows-1252 reach
+ * VideoOptimizer unchanged
+ */
+const base64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+const SUBTITLE_MAX_SIZE = 2 * 1024 * 1024;
+
+/**
+ * Language of a subtitle file named like `trailer.de.srt` or `en-US.vtt`
+ */
+const subtitleLanguageFromName = (name, languages) => {
+  const parts = name.toLowerCase().split(/[._ ]/);
+  return languages.find((language) => parts.includes(language.code.toLowerCase()))?.code ?? "";
 };
 
 /**
@@ -392,11 +418,13 @@ panel.plugin("circus-circuli/videooptimizer", {
         video: Object,
         library: Object,
         thumbnails: { type: Array, default: () => [] },
+        subtitles: { type: Array, default: () => [] },
+        languages: { type: Array, default: () => [] },
         embedUrl: String,
         error: String
       },
       data() {
-        return { posterUploading: false };
+        return { posterUploading: false, subtitleUploading: false, subtitleTarget: null };
       },
       computed: {
         title() {
@@ -410,6 +438,9 @@ panel.plugin("circus-circuli/videooptimizer", {
         },
         poster() {
           return this.video?.poster ?? { source: "thumbnail", custom_status: "none" };
+        },
+        canEditSubtitles() {
+          return this.library?.media_managed !== false && this.video?.status !== "failed";
         },
         details() {
           return [
@@ -474,6 +505,171 @@ panel.plugin("circus-circuli/videooptimizer", {
         },
         deletePoster() {
           this.run(() => api.deletePoster(this, this.uuid));
+        },
+        kindOptions() {
+          return [
+            { value: "subtitles", text: this.$t("videooptimizer.subtitles.kind.subtitles") },
+            { value: "captions", text: this.$t("videooptimizer.subtitles.kind.captions") }
+          ];
+        },
+        subtitleInfo(subtitle) {
+          return [
+            subtitle.language,
+            this.$t("videooptimizer.subtitles.kind." + (subtitle.kind === "captions" ? "captions" : "subtitles")),
+            this.$t("videooptimizer.subtitles.cues", { count: subtitle.cue_count ?? 0 }),
+            subtitle.origin === "embedded" ? this.$t("videooptimizer.subtitles.embedded") : null,
+            format.date(subtitle.updated_at)
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        },
+        subtitleOptions(subtitle) {
+          return [
+            { icon: "upload", text: this.$t("videooptimizer.subtitles.replace"), click: () => this.pickSubtitle(subtitle.language) },
+            { icon: "edit", text: this.$t("videooptimizer.subtitles.edit"), click: () => this.editSubtitle(subtitle) },
+            "-",
+            { icon: "trash", text: this.$t("videooptimizer.delete"), click: () => this.deleteSubtitle(subtitle) }
+          ];
+        },
+        pickSubtitle(language = null) {
+          this.subtitleTarget = language;
+          this.$refs.subtitle.click();
+        },
+        selectSubtitleFile(event) {
+          const file = event.target.files[0];
+          event.target.value = "";
+          if (!file) return;
+
+          if (!/\.(srt|vtt)$/i.test(file.name)) {
+            this.$panel.notification.error(this.$t("videooptimizer.subtitles.type"));
+            return;
+          }
+
+          if (file.size > SUBTITLE_MAX_SIZE) {
+            this.$panel.notification.error(this.$t("videooptimizer.subtitles.size"));
+            return;
+          }
+
+          const language = this.subtitleTarget || subtitleLanguageFromName(file.name, this.languages);
+          const existing = this.subtitles.find((subtitle) => subtitle.language === language);
+
+          this.$panel.dialog.open({
+            component: "k-form-dialog",
+            props: {
+              fields: {
+                file: { label: this.$t("videooptimizer.subtitles.file"), type: "info", text: file.name },
+                language: {
+                  label: this.$t("videooptimizer.subtitles.language"),
+                  type: "select",
+                  required: true,
+                  options: this.languages.map((item) => ({ value: item.code, text: item.label + " (" + item.code + ")" })),
+                  help: this.$t("videooptimizer.subtitles.language.help")
+                },
+                kind: { label: this.$t("videooptimizer.subtitles.kind"), type: "radio", columns: 1, options: this.kindOptions(), required: true },
+                isDefault: { label: this.$t("videooptimizer.subtitles.default"), type: "toggle", help: this.$t("videooptimizer.subtitles.default.help") }
+              },
+              value: {
+                language,
+                kind: existing?.kind ?? "subtitles",
+                isDefault: existing?.is_default ?? false
+              },
+              submitButton: this.$t("videooptimizer.upload")
+            },
+            on: {
+              submit: (value) => this.uploadSubtitle(file, value)
+            }
+          });
+        },
+        async uploadSubtitle(file, value) {
+          if (!value.language) {
+            this.$panel.notification.error(this.$t("videooptimizer.subtitles.language.required"));
+            return;
+          }
+
+          this.$panel.dialog.close();
+          this.subtitleUploading = true;
+
+          try {
+            const result = await api.uploadSubtitle(this, this.uuid, {
+              language: value.language,
+              kind: value.kind,
+              isDefault: Boolean(value.isDefault),
+              filename: file.name,
+              content: await base64(file)
+            });
+
+            const skipped = result?.skipped_cues ?? 0;
+
+            if (skipped > 0) {
+              this.$panel.notification.info(this.$t("videooptimizer.subtitles.skipped", { count: skipped }));
+            } else {
+              this.$panel.notification.success(this.$t("videooptimizer.saved"));
+            }
+
+            this.$panel.view.reload();
+          } catch (error) {
+            this.$panel.notification.error(error);
+          } finally {
+            this.subtitleUploading = false;
+          }
+        },
+        editSubtitle(subtitle) {
+          this.$panel.dialog.open({
+            component: "k-form-dialog",
+            props: {
+              fields: {
+                kind: { label: this.$t("videooptimizer.subtitles.kind"), type: "radio", columns: 1, options: this.kindOptions(), required: true },
+                isDefault: { label: this.$t("videooptimizer.subtitles.default"), type: "toggle", help: this.$t("videooptimizer.subtitles.default.help") }
+              },
+              value: { kind: subtitle.kind ?? "subtitles", isDefault: subtitle.is_default ?? false },
+              submitButton: this.$t("save")
+            },
+            on: {
+              submit: async (value) => {
+                this.$panel.dialog.close();
+                await this.run(() =>
+                  api.updateSubtitle(this, this.uuid, subtitle.language, { kind: value.kind, isDefault: Boolean(value.isDefault) })
+                );
+              }
+            }
+          });
+        },
+        deleteSubtitle(subtitle) {
+          this.$panel.dialog.open({
+            component: "k-remove-dialog",
+            props: { text: this.$t("videooptimizer.subtitles.delete.confirm", { label: subtitle.label || subtitle.language }) },
+            on: {
+              submit: async () => {
+                this.$panel.dialog.close();
+                await this.run(() => api.deleteSubtitle(this, this.uuid, subtitle.language));
+              }
+            }
+          });
+        },
+        addLanguage() {
+          this.$panel.dialog.open({
+            component: "k-form-dialog",
+            props: {
+              fields: {
+                code: { label: this.$t("videooptimizer.subtitles.language.code"), type: "text", required: true, counter: false, help: this.$t("videooptimizer.subtitles.language.code.help") },
+                label: { label: this.$t("videooptimizer.subtitles.language.label"), type: "text", help: this.$t("videooptimizer.subtitles.language.label.help") }
+              },
+              value: { code: "", label: "" },
+              submitButton: this.$t("videooptimizer.subtitles.language.add")
+            },
+            on: {
+              submit: async (value) => {
+                try {
+                  await api.addSubtitleLanguage(this, value);
+                  this.$panel.dialog.close();
+                  this.$panel.notification.success(this.$t("videooptimizer.saved"));
+                  this.$panel.view.reload();
+                } catch (error) {
+                  this.$panel.notification.error(error);
+                }
+              }
+            }
+          });
         },
         async uploadPoster(event) {
           const file = event.target.files[0];
@@ -561,6 +757,37 @@ panel.plugin("circus-circuli/videooptimizer", {
                   </k-button-group>
                   <input ref="poster" type="file" accept="image/jpeg,image/png,image/webp" hidden @change="uploadPoster">
                 </div>
+              </template>
+            </section>
+
+            <section class="k-videooptimizer-section k-videooptimizer-section-wide">
+              <h2 class="k-label">{{ $t('videooptimizer.subtitles') }}</h2>
+
+              <k-box v-if="library && library.media_managed === false" theme="info" :text="$t('videooptimizer.library.delivery')" />
+
+              <ul v-if="subtitles.length" class="k-videooptimizer-subtitles">
+                <li v-for="subtitle in subtitles" :key="subtitle.language">
+                  <div class="k-videooptimizer-library-text">
+                    <strong>
+                      {{ subtitle.label || subtitle.language }}
+                      <span v-if="subtitle.is_default" class="k-videooptimizer-badge">{{ $t('videooptimizer.subtitles.default.short') }}</span>
+                    </strong>
+                    <span class="k-videooptimizer-hint">{{ subtitleInfo(subtitle) }}</span>
+                  </div>
+                  <k-options-dropdown v-if="canEditSubtitles" :options="subtitleOptions(subtitle)" />
+                </li>
+              </ul>
+              <p v-else class="k-videooptimizer-hint">{{ $t('videooptimizer.subtitles.empty') }}</p>
+
+              <template v-if="canEditSubtitles">
+                <k-box v-if="languages.length === 0" theme="notice" :text="$t('videooptimizer.subtitles.languages.empty')" />
+
+                <k-button-group class="k-videooptimizer-subtitle-buttons">
+                  <k-button v-if="languages.length" icon="upload" size="sm" variant="filled" :text="$t('videooptimizer.subtitles.upload')" :disabled="subtitleUploading" @click="pickSubtitle()" />
+                  <k-button icon="add" size="sm" variant="filled" :text="$t('videooptimizer.subtitles.language.add')" @click="addLanguage" />
+                </k-button-group>
+                <p v-if="subtitleUploading" class="k-videooptimizer-hint">{{ $t('videooptimizer.uploading') }}</p>
+                <input ref="subtitle" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden @change="selectSubtitleFile">
               </template>
             </section>
           </div>

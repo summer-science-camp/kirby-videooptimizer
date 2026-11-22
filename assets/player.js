@@ -62,6 +62,20 @@ const createVideo = (config) => {
   video.muted = Boolean(config.muted);
   video.setAttribute("aria-label", config.title ?? "");
   if (config.poster) video.poster = config.poster;
+
+  // Subtitles are WebVTT files on the CDN, which needs a CORS request
+  if (config.tracks?.length) video.crossOrigin = "anonymous";
+
+  for (const track of config.tracks ?? []) {
+    const element = document.createElement("track");
+    element.kind = track.kind;
+    element.src = track.src;
+    element.srclang = track.srclang;
+    element.label = track.label;
+    element.default = Boolean(track.default);
+    video.append(element);
+  }
+
   video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain";
   return video;
 };

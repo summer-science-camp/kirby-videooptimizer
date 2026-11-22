@@ -7,6 +7,7 @@ The plugin follows the official [VideoOptimizer plugin for Shopware](https://git
 ## Features
 
 - **Panel area "Videos"**: video list with library filter, search, upload and URL import; video details with preview, rename, delete and poster selection (one of 10 frames or a custom image); library management with create, edit (name, description, codecs, resolutions), reprocess and delete
+- **Subtitles**: upload SRT or WebVTT files per language in the video details (self-hosted libraries only), set subtitles or captions and the default language, manage the organization's subtitle languages; the player adds them as `<track>` elements
 - **Panel field** `videooptimizer` to pick a video from all libraries, with library filter, search and status (ready, processing, failed)
 - **Upload** straight from the Panel: the browser sends the file in parts to VideoOptimizer storage via presigned URLs, the file never passes through the Kirby server
 - **Import** of a video from a public `https` URL

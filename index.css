@@ -239,13 +239,15 @@
   border-radius: var(--rounded-sm);
 }
 
-.k-videooptimizer-libraries {
+.k-videooptimizer-libraries,
+.k-videooptimizer-subtitles {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
 }
 
-.k-videooptimizer-libraries > li {
+.k-videooptimizer-libraries > li,
+.k-videooptimizer-subtitles > li {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -267,4 +269,32 @@
   .k-videooptimizer-detail {
     grid-template-columns: 1fr;
   }
+}
+
+/* Subtitles */
+
+.k-videooptimizer-subtitles + .k-videooptimizer-hint,
+.k-videooptimizer-section .k-videooptimizer-subtitles {
+  margin-bottom: var(--spacing-3);
+}
+
+.k-videooptimizer-section > .k-videooptimizer-hint + .k-box,
+.k-videooptimizer-section > .k-box + .k-videooptimizer-subtitles,
+.k-videooptimizer-section > .k-box + .k-videooptimizer-hint {
+  margin-top: var(--spacing-3);
+}
+
+.k-videooptimizer-subtitle-buttons {
+  margin-top: var(--spacing-3);
+}
+
+.k-videooptimizer-badge {
+  margin-inline-start: var(--spacing-2);
+  padding: 0 var(--spacing-1);
+  border-radius: var(--rounded-sm);
+  background: var(--color-blue-200, var(--color-gray-200));
+  color: var(--color-blue-800, var(--color-text));
+  font-size: var(--text-xs);
+  font-weight: var(--font-normal);
+  vertical-align: middle;
 }

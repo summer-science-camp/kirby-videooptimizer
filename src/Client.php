@@ -221,6 +221,98 @@ class Client
         ], fn ($value) => $value !== null));
     }
 
+    // Subtitles
+
+    /**
+     * Subtitle languages of the organization, in the order of the player menu
+     *
+     * @return list<array{code: string, label: string, video_count?: int}>
+     */
+    public function subtitleLanguages(): array
+    {
+        return array_values(array_filter($this->data('GET', '/subtitle-languages'), 'is_array'));
+    }
+
+    /**
+     * Adds a subtitle language. The BCP 47 code cannot be changed later.
+     */
+    public function addSubtitleLanguage(string $code, ?string $label = null): array
+    {
+        return $this->data('POST', '/subtitle-languages', array_filter([
+            'code'  => $code,
+            'label' => $label,
+        ], fn ($value) => $value !== null && $value !== ''));
+    }
+
+    /**
+     * One entry per language
+     */
+    public function subtitles(string $uuid): array
+    {
+        return array_values(array_filter($this->data('GET', '/videos/' . rawurlencode($uuid) . '/subtitles'), 'is_array'));
+    }
+
+    /**
+     * The stored WebVTT file of one language
+     */
+    public function subtitleFile(string $uuid, string $language): string
+    {
+        return $this->raw('GET', '/videos/' . rawurlencode($uuid) . '/subtitles/' . rawurlencode($language), accept: 'text/vtt, application/json');
+    }
+
+    /**
+     * Uploads an SRT or WebVTT file for one language and replaces an existing
+     * subtitle in that language. `kind` and `isDefault` are kept on replace
+     * when null.
+     *
+     * @return array{subtitle?: array, skipped_cues?: int}
+     */
+    public function uploadSubtitle(string $uuid, string $language, string $filename, string $content, ?string $kind = null, ?bool $isDefault = null): array
+    {
+        $fields = array_filter([
+            'language'   => $language,
+            'kind'       => $kind,
+            'is_default' => $isDefault === null ? null : ($isDefault ? 'true' : 'false'),
+        ], fn ($value) => $value !== null);
+
+        $boundary = 'videooptimizer-' . bin2hex(random_bytes(12));
+        $body     = '';
+
+        foreach ($fields as $name => $value) {
+            $body .= '--' . $boundary . "\r\n"
+                . 'Content-Disposition: form-data; name="' . $name . '"' . "\r\n\r\n"
+                . $value . "\r\n";
+        }
+
+        $body .= '--' . $boundary . "\r\n"
+            . 'Content-Disposition: form-data; name="file"; filename="' . str_replace(['"', "\r", "\n"], '', $filename) . '"' . "\r\n"
+            . 'Content-Type: ' . (str_ends_with(strtolower($filename), '.vtt') ? 'text/vtt' : 'application/x-subrip') . "\r\n\r\n"
+            . $content . "\r\n"
+            . '--' . $boundary . "--\r\n";
+
+        $result = $this->request('POST', '/videos/' . rawurlencode($uuid) . '/subtitles', $body, contentType: 'multipart/form-data; boundary=' . $boundary)['data'] ?? [];
+        $this->forgetEmbed($uuid);
+
+        return is_array($result) ? $result : [];
+    }
+
+    /**
+     * Changes kind or default flag of a subtitle. The API has no update
+     * endpoint, so the stored file is uploaded again with the new values.
+     */
+    public function updateSubtitle(string $uuid, string $language, ?string $kind = null, ?bool $isDefault = null): array
+    {
+        $content = $this->subtitleFile($uuid, $language);
+
+        return $this->uploadSubtitle($uuid, $language, $language . '.vtt', $content, $kind, $isDefault);
+    }
+
+    public function deleteSubtitle(string $uuid, string $language): void
+    {
+        $this->request('DELETE', '/videos/' . rawurlencode($uuid) . '/subtitles/' . rawurlencode($language));
+        $this->forgetEmbed($uuid);
+    }
+
     // Embed (public, no token)
 
     /**
@@ -318,11 +410,32 @@ class Client
     }
 
     /**
+     * JSON request. An array body is sent as JSON, a string body as is with
+     * the given content type.
+     *
      * @throws ApiException|ConfigurationException
      */
-    private function request(string $method, string $path, ?array $body = null, bool $auth = true, int $timeout = self::TIMEOUT): array
+    private function request(string $method, string $path, array|string|null $body = null, bool $auth = true, int $timeout = self::TIMEOUT, string $contentType = 'application/json'): array
     {
-        $headers = ['Accept: application/json'];
+        $payload = is_array($body) ? json_encode($body, JSON_THROW_ON_ERROR) : $body;
+        $result  = $this->raw($method, $path, $payload, $auth, $timeout, $contentType);
+
+        if ($result === '') {
+            return [];
+        }
+
+        $decoded = json_decode($result, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Request that returns the response body unparsed
+     *
+     * @throws ApiException|ConfigurationException
+     */
+    private function raw(string $method, string $path, ?string $body = null, bool $auth = true, int $timeout = self::TIMEOUT, string $contentType = 'application/json', string $accept = 'application/json'): string
+    {
+        $headers = ['Accept: ' . $accept];
 
         if ($auth === true) {
             if ($this->hasToken() === false) {
@@ -333,23 +446,17 @@ class Client
         }
 
         if ($body !== null) {
-            $headers[] = 'Content-Type: application/json';
+            $headers[] = 'Content-Type: ' . $contentType;
         }
 
-        $url     = $this->assertHttps($this->apiUrl, 'API') . $path;
-        $payload = $body !== null ? json_encode($body, JSON_THROW_ON_ERROR) : null;
-        $result  = $this->send($method, $url, $headers, $payload, $timeout);
+        $url    = $this->assertHttps($this->apiUrl, 'API') . $path;
+        $result = $this->send($method, $url, $headers, $body, $timeout);
 
         if ($result['status'] < 200 || $result['status'] >= 300) {
             throw ApiException::fromResponse($result['status'], $result['body']);
         }
 
-        if ($result['body'] === '') {
-            return [];
-        }
-
-        $decoded = json_decode($result['body'], true);
-        return is_array($decoded) ? $decoded : [];
+        return $result['body'];
     }
 
     /**
