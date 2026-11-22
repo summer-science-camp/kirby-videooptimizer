@@ -23,6 +23,8 @@ return function (App $kirby) {
         'resolutions' => $ladder($body()->get('resolutions')),
     ], fn ($value, $key) => $value !== null && ($value !== '' || ($create === false && $key === 'description')), ARRAY_FILTER_USE_BOTH);
 
+    $kind = fn (mixed $value): ?string => in_array($value, ['subtitles', 'captions'], true) ? $value : null;
+
     return [
         // Libraries
 
@@ -145,6 +147,79 @@ return function (App $kirby) {
             'pattern' => 'videooptimizer/videos/(:any)/poster',
             'method'  => 'DELETE',
             'action'  => fn (string $uuid) => Plugin::respond(fn (Client $client) => $client->deletePoster($uuid)),
+        ],
+
+        // Subtitles
+
+        [
+            'pattern' => 'videooptimizer/subtitle-languages',
+            'method'  => 'GET',
+            'action'  => fn () => Plugin::respond(fn (Client $client) => $client->subtitleLanguages()),
+        ],
+        [
+            'pattern' => 'videooptimizer/subtitle-languages',
+            'method'  => 'POST',
+            'action'  => function () use ($body) {
+                $code = trim((string)$body()->get('code'));
+
+                if (preg_match('/^[A-Za-z]{2,8}([-_][A-Za-z0-9]{1,8})*$/', $code) !== 1 || strlen($code) > 35) {
+                    return Plugin::error(t('videooptimizer.subtitles.language.invalid'));
+                }
+
+                return Plugin::respond(fn (Client $client) => $client->addSubtitleLanguage($code, trim((string)$body()->get('label'))));
+            },
+        ],
+        [
+            'pattern' => 'videooptimizer/videos/(:any)/subtitles',
+            'method'  => 'GET',
+            'action'  => fn (string $uuid) => Plugin::respond(fn (Client $client) => $client->subtitles($uuid)),
+        ],
+        [
+            // The Panel sends the file base64 encoded, so UTF-16 and
+            // Windows-1252 files arrive unchanged
+            'pattern' => 'videooptimizer/videos/(:any)/subtitles',
+            'method'  => 'POST',
+            'action'  => function (string $uuid) use ($body, $kind) {
+                $language = trim((string)$body()->get('language'));
+                $filename = basename((string)$body()->get('filename'));
+                $content  = base64_decode((string)$body()->get('content'), true);
+
+                if ($language === '') {
+                    return Plugin::error(t('videooptimizer.subtitles.language.required'));
+                }
+
+                if (preg_match('/\.(srt|vtt)$/i', $filename) !== 1 || $content === false || $content === '') {
+                    return Plugin::error(t('videooptimizer.subtitles.type'));
+                }
+
+                if (strlen($content) > 2 * 1024 * 1024) {
+                    return Plugin::error(t('videooptimizer.subtitles.size'));
+                }
+
+                return Plugin::respond(fn (Client $client) => $client->uploadSubtitle(
+                    $uuid,
+                    $language,
+                    $filename,
+                    $content,
+                    $kind($body()->get('kind')),
+                    $body()->get('isDefault') === null ? null : filter_var($body()->get('isDefault'), FILTER_VALIDATE_BOOL),
+                ));
+            },
+        ],
+        [
+            'pattern' => 'videooptimizer/videos/(:any)/subtitles/(:any)',
+            'method'  => 'PATCH',
+            'action'  => fn (string $uuid, string $language) => Plugin::respond(fn (Client $client) => $client->updateSubtitle(
+                $uuid,
+                $language,
+                $kind($body()->get('kind')),
+                $body()->get('isDefault') === null ? null : filter_var($body()->get('isDefault'), FILTER_VALIDATE_BOOL),
+            )),
+        ],
+        [
+            'pattern' => 'videooptimizer/videos/(:any)/subtitles/(:any)',
+            'method'  => 'DELETE',
+            'action'  => fn (string $uuid, string $language) => Plugin::respond(fn (Client $client) => $client->deleteSubtitle($uuid, $language)),
         ],
 
         // Uploads

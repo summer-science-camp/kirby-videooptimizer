@@ -20,6 +20,7 @@ class Video
         public readonly ?string $title,
         public readonly ?float $duration,
         public readonly string $aspectRatio,
+        public readonly array $tracks = [],
     ) {
     }
 
@@ -57,7 +58,34 @@ class Video
             title: is_string($embed['title'] ?? null) ? $embed['title'] : null,
             duration: is_numeric($embed['duration'] ?? null) ? (float)$embed['duration'] : null,
             aspectRatio: static::aspectRatio($embed['resolution'] ?? null),
+            tracks: static::tracks($embed['tracks'] ?? null),
         );
+    }
+
+    /**
+     * Subtitle tracks (WebVTT on the CDN) for `<track>` elements
+     *
+     * @return list<array{src: string, srclang: string, label: string, kind: string, default: bool}>
+     */
+    private static function tracks(mixed $tracks): array
+    {
+        $result = [];
+
+        foreach (is_array($tracks) ? $tracks : [] as $track) {
+            if (is_string($track['src'] ?? null) === false || str_starts_with($track['src'], 'https://') === false || is_string($track['srclang'] ?? null) === false) {
+                continue;
+            }
+
+            $result[] = [
+                'src'     => $track['src'],
+                'srclang' => $track['srclang'],
+                'label'   => is_string($track['label'] ?? null) && $track['label'] !== '' ? $track['label'] : $track['srclang'],
+                'kind'    => ($track['kind'] ?? null) === 'captions' ? 'captions' : 'subtitles',
+                'default' => ($track['default'] ?? false) === true,
+            ];
+        }
+
+        return $result;
     }
 
     /**

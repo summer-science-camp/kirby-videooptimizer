@@ -48,6 +48,7 @@ $config       = [
     'poster'   => $video->poster,
     'title'    => $label,
     'hlsJs'    => $plugin->asset('hls.light.min.js')?->url(),
+    'tracks'   => $video->tracks,
 ] + $options;
 ?>
 <div class="videooptimizer <?= esc($class ?? '', 'attr') ?>" data-videooptimizer="<?= esc(json_encode($config), 'attr') ?>"
@@ -71,7 +72,12 @@ $config       = [
   <?php else: ?>
   <video aria-label="<?= esc($label, 'attr') ?>" playsinline preload="none" <?= $video->poster ? 'poster="' . esc($video->poster, 'attr') . '"' : '' ?>
     <?= $options['controls'] ? 'controls' : '' ?> <?= $options['loop'] ? 'loop' : '' ?> <?= $options['muted'] || $options['autoplay'] ? 'muted' : '' ?>
-    style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain"></video>
+    <?= $video->tracks !== [] ? 'crossorigin="anonymous"' : '' ?>
+    style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain">
+    <?php foreach ($video->tracks as $track): ?>
+    <track kind="<?= $track['kind'] ?>" src="<?= esc($track['src'], 'attr') ?>" srclang="<?= esc($track['srclang'], 'attr') ?>" label="<?= esc($track['label'], 'attr') ?>"<?= $track['default'] ? ' default' : '' ?>>
+    <?php endforeach ?>
+  </video>
   <?php endif ?>
 </div>
 <script type="module" src="<?= $plugin->asset('player.js')?->url() ?>"></script>

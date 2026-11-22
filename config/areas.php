@@ -91,10 +91,15 @@ return [
                                 ? $client->thumbnails($uuid)
                                 : [];
 
+                            // Subtitles can only be uploaded to self-hosted libraries
+                            $mediaManaged = ($library['media_managed'] ?? false) === true;
+
                             return [
                                 'video'      => $video,
                                 'library'    => $library,
                                 'thumbnails' => $thumbnails,
+                                'subtitles'  => $client->subtitles($uuid),
+                                'languages'  => $mediaManaged ? $client->subtitleLanguages() : [],
                                 'embedUrl'   => $client->embedPlayerUrl($uuid),
                             ];
                         });
